@@ -2,7 +2,6 @@ from github import Github
 import hcl2
 import os
 import sys, getopt
-#import certifi
 
 def main(argv):
     github_access_token = os.environ.get('GITHUB_ACCESS_TOKEN')
@@ -41,12 +40,12 @@ def main(argv):
     if github_access_token == None:
         print(f"Github Access token must be set with the -t option or in ENV")
         sys.exit()
+
     if(is_enterprise):
         g = Github(base_url="https://{enterprise_hostname}/api/v3", login_or_token=github_access_token)
     else:
         g = Github(github_access_token)
-    # Github Enterprise with custom hostname
-    # 
+
     for repo_name in repo_names:
         terraform_files = []
         print(repo_name)
