@@ -4,11 +4,11 @@
 # Dependencies
 ```
 pip install PyGithub
-pip install pyhcl
+pip install python-hcl2
 ```
 # Usage 
 ```
-getTerraformAWSSGs.py -r <repo/path> [-t <github_access_token> -e <enterprise_hostname>]
+getTerraformAWSSGs.py -r <repo/path> [-t <github_access_token> -b <branch_name> -r <repo/path2> -r <repo/pathn> ]
 ```
 
 `github_access_token` can also be set as an environment variable
