@@ -1,7 +1,8 @@
 from github import Github
-import hcl
+import hcl2
 import os
 import sys, getopt
+#import certifi
 
 def main(argv):
     github_access_token = os.environ.get('GITHUB_ACCESS_TOKEN')
@@ -43,28 +44,45 @@ def main(argv):
         g = Github(github_access_token)
     # Github Enterprise with custom hostname
     # 
-    print(f"github token is {github_access_token}")
-    terraform_files = []
     for repo_name in repo_names:
+        terraform_files = []
         print(repo_name)
         repo = g.get_repo(repo_name)
-
-        contents = repo.get_contents("")
+        try:
+            contents = repo.get_contents("",ref="develop")
+        except:
+            print(f"No develop branch found for {repo_name}")
+            continue
         while contents:
             file_content = contents.pop(0)
             if file_content.type == "dir":
-                contents.extend(repo.get_contents(file_content.path))
+                contents.extend(repo.get_contents(file_content.path,ref="develop"))
             else:
                 if file_content.path[-3:] == ".tf":
                     terraform_files.append(file_content)
-
-        for tf in terraform_files:
-            file_content = hcl.loads(tf.decoded_content)
-            try:
-                for group in file_content['resource']['aws_security_group']:
-                    print(group)
-            except KeyError:
-                print(f"No aws_security_group resources found in {tf.name}")
+        if not os.path.isdir(repo_name[:repo_name.find("/")]):
+            os.makedirs(repo_name[:repo_name.find("/")])
+        with open(repo_name, 'w') as f:
+            for tf in terraform_files:
+                f.write(tf.name + "\n")
+                try:
+                    file_content = hcl2.loads(tf.decoded_content.decode())
+                except:
+                    print(f"Issue interpreting {tf.name}, skipping")
+                    continue
+                try:
+                    for resource in file_content['resource']:
+                        if 'aws_security_group_rule' in resource:
+                            sgrulename = list(resource['aws_security_group_rule'].keys())[0]
+                            sgrules = resource['aws_security_group_rule'][sgrulename]
+                            f.write(f"SG Rule Name: {sgrulename}\n")
+                            for key in sgrules:
+                                f.write(key + ' = ' + str(sgrules[key]) + "\n")
+                            f.write("\n")
+                except KeyError:
+                    f.write(f"No aws_security_group resources found in {tf.name}")
+                except ValueError: 
+                    continue
 
 if __name__ == "__main__":
     main(sys.argv[1:])
