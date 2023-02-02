@@ -9,15 +9,16 @@ def main(argv):
     repo_names = []
     is_enterprise = False
     enterprise_hostname = ""
+    branch_name = ""
     try:
-        opts, args = getopt.getopt(argv,"hr:t:e",["repo=","token=","enterprise_hostname="])
+        opts, args = getopt.getopt(argv,"hr:t:e:b:",["repo=","token=","enterprise_hostname=","branch_name="])
     except getopt.GetoptError:
-        print ('getTerraformAWSSGs.py -r <repo/path> [-t <github_access_token>]')
+        print ('getTerraformAWSSGs.py -r <repo/path> [-t <github_access_token> -b <branch_name>]')
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
             print ('''
-            getTerraformAWSSGs.py -r <repo/path> [-r <repo/path2> -r <repo/pathn> -t <github_access_token>]
+            getTerraformAWSSGs.py -r <repo/path> [-r <repo/path2> -r <repo/pathn> -t <github_access_token> -b <branch_name>]
 
             github_access_token can also be set as an environment variable
             github_access_token set on command line takes precidence
@@ -27,6 +28,8 @@ def main(argv):
             sys.exit()
         elif opt in ("-r", "--repo"):
             repo_names.append(arg)
+        elif opt in ("-b", "--branch_name"):
+            branch_name = arg
         elif opt in ("-t", "--token"):
             github_access_token = arg
         elif opt in ('-e', "--enterprise_hostname"):
@@ -49,20 +52,20 @@ def main(argv):
         print(repo_name)
         repo = g.get_repo(repo_name)
         try:
-            contents = repo.get_contents("",ref="develop")
+            contents = repo.get_contents("",ref=branch_name)
         except:
-            print(f"No develop branch found for {repo_name}")
+            print(f"No {branch_name} branch found for {repo_name}")
             continue
         while contents:
             file_content = contents.pop(0)
             if file_content.type == "dir":
-                contents.extend(repo.get_contents(file_content.path,ref="develop"))
+                contents.extend(repo.get_contents(file_content.path,ref=branch_name))
             else:
                 if file_content.path[-3:] == ".tf":
                     terraform_files.append(file_content)
         if not os.path.isdir(repo_name[:repo_name.find("/")]):
             os.makedirs(repo_name[:repo_name.find("/")])
-        with open(repo_name, 'w') as f:
+        with open(f"{repo_name}.txt", 'w') as f:
             for tf in terraform_files:
                 f.write(tf.name + "\n")
                 try:
@@ -77,10 +80,10 @@ def main(argv):
                             sgrules = resource['aws_security_group_rule'][sgrulename]
                             f.write(f"SG Rule Name: {sgrulename}\n")
                             for key in sgrules:
-                                f.write(key + ' = ' + str(sgrules[key]) + "\n")
+                                f.write(str(key) + ' = ' + str(sgrules[key]) + "\n")
                             f.write("\n")
                 except KeyError:
-                    f.write(f"No aws_security_group resources found in {tf.name}")
+                    f.write(f"No aws_security_group resources found in {tf.name}\n")
                 except ValueError: 
                     continue
 
